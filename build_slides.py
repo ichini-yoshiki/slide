@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 slides.md（YAML マルチドキュメント）から #slide-area を生成し slide.html に埋め込む。
-依存: pip install -r requirements.txt
+依存: リポジトリ直下で pip install -r requirements.txt
 
-正本: slides.md
+使い方:
+  python build_slides.py SLIDE/<デック名>
+
+正本: <デック>/slides.md
 型: cover | toc | section | bullets | cards
   bullets は任意で image: 相対パス（slide.html と同じフォルダ）, image_alt: 省略可
   cards は任意で footer_section: フッター用の表示を上書き（例: 3. まとめ）
@@ -14,6 +17,7 @@ data-section は section の section_num + title から自動命名。
 
 from __future__ import annotations
 
+import argparse
 import html
 import re
 from pathlib import Path
@@ -23,12 +27,13 @@ try:
     import yaml
 except ImportError as e:
     raise SystemExit(
-        "PyYAML が必要です。次を実行してください: pip install -r requirements.txt"
+        "PyYAML が必要です。リポジトリ直下で次を実行してください: pip install -r requirements.txt"
     ) from e
 
-ROOT = Path(__file__).resolve().parent
-LOGO = (ROOT / "_logo_frag.txt").read_text(encoding="utf-8")
-SLIDES_MD = ROOT / "slides.md"
+# main() でデックパス確定後に設定される
+ROOT: Path | None = None
+LOGO: str | None = None
+SLIDES_MD: Path | None = None
 
 
 def esc(s: str) -> str:
@@ -40,6 +45,7 @@ def esc_attr(s: str) -> str:
 
 
 def load_documents() -> list[dict[str, Any]]:
+    assert SLIDES_MD is not None
     raw = SLIDES_MD.read_text(encoding="utf-8")
     docs: list[dict[str, Any]] = []
     for doc in yaml.safe_load_all(raw):
@@ -86,6 +92,7 @@ def normalize_toc_labels(raw_items: Any) -> list[str]:
 
 
 def render_cover(d: dict[str, Any], active: bool) -> str:
+    assert LOGO is not None
     cls = "slide slide-title" + (" active" if active else "")
     main_title = join_title_lines(d.get("main_title"))
     sub_title = esc(str(d.get("sub_title", "")))
@@ -102,6 +109,7 @@ def render_cover(d: dict[str, Any], active: bool) -> str:
 
 
 def render_toc(d: dict[str, Any], section_slide_indices: list[int]) -> str:
+    assert LOGO is not None
     heading = esc(str(d.get("heading", "目次")))
     labels = normalize_toc_labels(d.get("items"))
     if len(labels) != len(section_slide_indices):
@@ -145,6 +153,7 @@ def render_bullet_item(x: Any, index: int) -> str:
 
 
 def render_section(d: dict[str, Any]) -> str:
+    assert LOGO is not None
     display = section_data_section(d)
     num = int(d["section_num"])
     title = esc(str(d["title"]))
@@ -160,6 +169,7 @@ def render_section(d: dict[str, Any]) -> str:
 
 
 def render_bullets(data_section: str, d: dict[str, Any]) -> str:
+    assert LOGO is not None
     sk = esc_attr(data_section)
     heading = esc(str(d["heading"]))
     items = d.get("items") or []
@@ -197,6 +207,7 @@ def render_bullets(data_section: str, d: dict[str, Any]) -> str:
 
 
 def render_cards(data_section: str, d: dict[str, Any]) -> str:
+    assert LOGO is not None
     sk = esc_attr(data_section)
     heading = esc(str(d["heading"]))
     cards = d.get("cards") or []
@@ -264,6 +275,7 @@ def render_slides_html(docs: list[dict[str, Any]]) -> tuple[str, str]:
 
 
 def patch_slide_html(inner: str, html_title: str, slide_count: int) -> None:
+    assert ROOT is not None
     path = ROOT / "slide.html"
     s = path.read_text(encoding="utf-8")
     start_tag = '<div id="slide-area">'
@@ -295,6 +307,28 @@ def patch_slide_html(inner: str, html_title: str, slide_count: int) -> None:
 
 
 def main() -> None:
+    global ROOT, LOGO, SLIDES_MD
+
+    parser = argparse.ArgumentParser(
+        description="slides.md から slide.html のスライド領域を生成する。"
+    )
+    parser.add_argument(
+        "deck",
+        type=Path,
+        help="デックのディレクトリ（slides.md / slide.html / _logo_frag.txt がある場所）",
+    )
+    args = parser.parse_args()
+    ROOT = args.deck.resolve()
+    if not ROOT.is_dir():
+        raise SystemExit(f"ディレクトリがありません: {ROOT}")
+
+    logo_path = ROOT / "_logo_frag.txt"
+    if not logo_path.is_file():
+        raise SystemExit(f"_logo_frag.txt がありません: {logo_path}")
+
+    LOGO = logo_path.read_text(encoding="utf-8")
+    SLIDES_MD = ROOT / "slides.md"
+
     docs = load_documents()
     inner, html_title = render_slides_html(docs)
     n = len(docs)
