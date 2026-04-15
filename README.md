@@ -21,6 +21,15 @@ SLIDE/2026_04_16_PPP/
 
 新しい回の資料は、`SLIDE/` の下にフォルダを追加して整理します（詳しくは [SLIDE/README.md](SLIDE/README.md)）。
 
+### GitHub Pages で開くとき
+
+このリポジトリを GitHub Pages（`https://ichini-yoshiki.github.io/slide/`）で見る場合も、パスは **`SLIDE/` を含む**形です。
+
+例（2026_04_16_PPP）:
+
+- 正しい URL: `https://ichini-yoshiki.github.io/slide/SLIDE/2026_04_16_PPP/slide.html`
+- 旧 URL（`/2026_04_16_PPP/slide.html` のみ）は、フォルダ移動のため 404 になります。ブックマーク用に [2026_04_16_PPP/slide.html](2026_04_16_PPP/slide.html) から新しい場所へ転送するページを置いています。
+
 ---
 
 ## スライドを見る（インストール不要）
